@@ -428,6 +428,10 @@ extern "C" {
     // available tensor operations:
     enum ggml_op {
         GGML_OP_NONE = 0,
+        GGML_OP_GATHER_ROWS,
+        GGML_OP_CUMSUM,
+        GGML_OP_ARGMIN_EXCEED,
+        GGML_OP_GATHER_UNTIL,
 
         GGML_OP_DUP,
         GGML_OP_ADD,
@@ -1412,6 +1416,37 @@ extern "C" {
             struct ggml_tensor  * b,
             float                 scale,
             float                 max_bias);
+            
+    // apis for dynamic routing
+    GGML_API struct ggml_tensor * ggml_gather_rows(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        struct ggml_tensor  * indices); 
+        
+   GGML_API struct ggml_tensor * ggml_cumsum(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        int                   axis);     
+
+   GGML_API struct ggml_tensor * ggml_argmin_exceed(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        float                 threshold,
+        int                   axis);
+
+   GGML_API struct ggml_tensor * ggml_gather_until(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        struct ggml_tensor  * indices);
+
+   GGML_API struct ggml_tensor * ggml_dynamic_routing(
+        struct ggml_context * ctx,
+        struct ggml_tensor * selection_probs,
+        int64_t n_expert,
+        int64_t n_tokens,
+        float p_threshold);
+
+
 
     // rotary position embedding
     // if (mode & 1) - skip n_past elements (NOT SUPPORTED)
