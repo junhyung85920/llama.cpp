@@ -998,7 +998,7 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "OPT_STEP_ADAMW",
 };
 
-static_assert(GGML_OP_COUNT == 85, "GGML_OP_COUNT != 85");
+static_assert(GGML_OP_COUNT == 89, "GGML_OP_COUNT != 89");
 
 static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "none",
@@ -1097,7 +1097,7 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "adamw(x)",
 };
 
-static_assert(GGML_OP_COUNT == 85, "GGML_OP_COUNT != 85");
+static_assert(GGML_OP_COUNT == 89, "GGML_OP_COUNT != 89");
 
 static_assert(GGML_OP_POOL_COUNT == 2, "GGML_OP_POOL_COUNT != 2");
 
@@ -4339,6 +4339,95 @@ struct ggml_tensor * ggml_top_k(
                 0);
 
     return result;
+}
+
+// ggml_gather_rows
+
+struct ggml_tensor * ggml_gather_rows(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        struct ggml_tensor  * indices) {
+    GGML_ASSERT(indices->ne[0] <= INT32_MAX);
+    struct ggml_tensor * result = ggml_new_tensor(ctx, a->type, GGML_MAX_DIMS, indices->ne);
+
+    result->op     = GGML_OP_GATHER_ROWS;
+    result->src[0] = a;
+    result->src[1] = indices;
+
+    return result;
+}
+
+// ggml_cumsum
+
+struct ggml_tensor * ggml_cumsum(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        int                   axis) {
+    struct ggml_tensor * result = ggml_new_tensor(ctx, GGML_TYPE_F32, GGML_MAX_DIMS, a->ne);
+
+    ggml_set_op_params_i32(result, 0, axis);
+
+    result->op     = GGML_OP_CUMSUM;
+    result->src[0] = a;
+
+    return result;
+}
+
+// ggml_argmin_exceed
+
+struct ggml_tensor * ggml_argmin_exceed(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        float                 threshold,
+        int                   axis) {
+    struct ggml_tensor * result = ggml_new_tensor(ctx, GGML_TYPE_I32, GGML_MAX_DIMS, a->ne);
+
+    ggml_set_op_params_f32(result, 0, threshold);
+    ggml_set_op_params_i32(result, 1, axis);
+
+    result->op     = GGML_OP_ARGMIN_EXCEED;
+    result->src[0] = a;
+
+    return result;
+}
+
+
+
+// ggml_gather_until
+
+struct ggml_tensor * ggml_gather_until(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        struct ggml_tensor  * indices) {
+    GGML_ASSERT(indices->ne[0] <= INT32_MAX);
+    struct ggml_tensor * result = ggml_new_tensor(ctx, a->type, GGML_MAX_DIMS, indices->ne);
+
+    result->op     = GGML_OP_GATHER_UNTIL;
+    result->src[0] = a;
+    result->src[1] = indices;
+
+    return result;
+}
+
+
+// ggml_dynamic_routing
+
+struct ggml_tensor * ggml_dynamic_routing(
+        struct ggml_context * ctx,
+        struct ggml_tensor * selection_probs,
+        int64_t n_expert,
+        int64_t n_tokens,
+        float p_threshold) {
+    
+    struct ggml_tensor * sorted_indices = ggml_argsort(ctx, selection_probs, GGML_SORT_ORDER_DESC);
+
+    // to implement functions below
+    struct ggml_tensor * sorted_probs = ggml_gather_rows(ctx, selection_probs, sorted_indices);
+    struct ggml_tensor * cumulative = ggml_cumsum(ctx, sorted_probs, 0);
+    struct ggml_tensor * threshold_indices = ggml_argmin_exceed(ctx, cumulative, p_threshold, 0);
+    struct ggml_tensor * selected_experts = ggml_gather_until(ctx, sorted_indices, threshold_indices);
+
+    return selected_experts;
 }
 
 // ggml_flash_attn_ext
